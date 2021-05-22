@@ -89,7 +89,52 @@ def pre_process_dataframe(df, numeric, categorical, missing=np.nan, missing_num=
         print(lsamodel.print_topics(num_topics=number_of_topics, num_words=words))
         return lsamodel
 
+      #https://www.datacamp.com/community/tutorials/discovering-hidden-topics-python
+      def compute_coherence_values(dictionary, doc_term_matrix, doc_clean, stop, start=2, step=3):
+          """
+          Input   : dictionary : Gensim dictionary
+                    corpus : Gensim corpus
+                    texts : List of input texts
+                    stop : Max num of topics
+          purpose : Compute c_v coherence for various number of topics
+          Output  : model_list : List of LSA topic models
+                    coherence_values : Coherence values corresponding to the LDA model with respective number of topics
+          """
+          coherence_values = []
+          model_list = []
+          for num_topics in range(start, stop, step):
+              # generate LSA model
+              model = LsiModel(doc_term_matrix, num_topics=number_of_topics, id2word = dictionary)  # train model
+              model_list.append(model)
+              coherencemodel = CoherenceModel(model=model, texts=doc_clean, dictionary=dictionary, coherence='c_v')
+              coherence_values.append(coherencemodel.get_coherence())
+          return model_list, coherence_values
 
+      def similarity_test(a , b, dictionary, doc_col, debug = False):
+          #This creates a index across a corpus b.
+          if len(b)<2:
+              return pd.Series([np.nan for item in range(len(a))]).values
+          if doc_col in ['tfidf_norm']:
+              index = similarities.MatrixSimilarity(b,num_features=len(dictionary))
+          elif doc_col in ['docvecs','lsi_norm','lda_norm']:
+              index = similarities.MatrixSimilarity(b)
+          #elif doc_col in ['lsi_norm','lda_norm']:
+          #    index = similarities.MatrixSimilarity(b,num_features=50) #warning shouldn't be hardcoded
+          else:
+              print("doc_col not in known list")
+          all_a=[]
+
+          for x in a:
+              similarity=index[x]
+              #This sorts the array from most similar to least similar.
+              similarity[::-1].sort()
+
+              #print(len(similarity),type(similarity))
+              all_a.append(similarity)
+          #This takes the mean of the topK items.
+          #print(len(a),len(all_a))
+
+          return pd.Series(all_a).values
 
     def vectorize(df, text_col,  custom_filters, num_topics):
         print("Vectorizing: ", text_col)
